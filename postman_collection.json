@@ -1,0 +1,68 @@
+{
+	"info": {
+		"_postman_id": "b3e3e3e3-5f5f-4a4a-9b9b-1c1c1c1c1c1c",
+		"name": "YT Clipper Service",
+		"description": "API collection for YT Clipper Service",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Analyze Video",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"url\": \"https://www.youtube.com/watch?v=VIDEO_ID\",\n    \"callback_url\": \"https://webhook.site/your-id\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/analyze",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"analyze"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Select Clip",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"clip_id\": \"REPLACE_WITH_CONVEX_CLIP_ID\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/select",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "8000",
+					"path": [
+						"select"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

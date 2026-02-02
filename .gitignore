@@ -160,3 +160,5 @@ cython_debug/
 .agents/
 .gemini/
 brain/
+
+.env.local

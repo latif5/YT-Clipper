@@ -1,11 +1,123 @@
 """
-Viral segment analyzer.
-Detects the most engaging parts of a video based on subtitle analysis.
+Viral segment analyzer using AI.
 """
 
-import re
+import os
+import json
 from typing import List, Dict
-from .utils import print_step, print_success, print_clips_summary
+from openai import OpenAI
+from .utils import print_step, print_success, print_error, print_clips_summary
+
+client = None
+
+def get_ai_client():
+    global client
+    if not client:
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if not api_key:
+            raise ValueError("OPENROUTER_API_KEY not found in environment variables")
+        
+        client = OpenAI(
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key,
+        )
+    return client
+
+def _format_transcript(subtitles: List[Dict]) -> str:
+    """Convert subtitle list to a readable text format with timestamps."""
+    formatted = []
+    for sub in subtitles:
+        start = sub["start"]
+        text = sub["text"]
+        formatted.append(f"[{start:.1f}s] {text}")
+    return "\n".join(formatted)
+
+def analyze_viral_segments(
+    subtitles: List[Dict],
+    num_clips: int = 3,
+    min_duration: float = 60.0,
+    max_duration: float = 180.0,
+    target_duration: float = 120.0,
+) -> List[Dict]:
+    """
+    Analyze subtitles using AI to find viral segments.
+    """
+    print_step("Analyzing", "Sending transcript to AI for viral analysis...")
+    
+    try:
+        ai = get_ai_client()
+        transcript_text = _format_transcript(subtitles)
+        
+        # Limit transcript length if necessary (rough estimation: 1hr ~ 100k chars)
+        # For now, let's assume it fits or truncate the middle if needed.
+        if len(transcript_text) > 100000:
+             print_error("Transcript too long, truncating...")
+             transcript_text = transcript_text[:100000]
+
+        prompt = f"""
+You are a viral content expert. Analyze the following video transcript and identify the top {num_clips} segments that are most likely to go viral on TikTok/Reels/Shorts.
+
+Constraints:
+- Minimum duration: {min_duration} seconds
+- Maximum duration: {max_duration} seconds
+- Target duration: {target_duration} seconds
+- Look for: High energy moments, complete stories, funny interactions, or valuable insights.
+
+Return ONLY valid JSON in this format:
+{{
+  "segments": [
+    {{
+      "start": 12.5,
+      "end": 45.0,
+      "score": 95,
+      "reasoning": "High energy intro with a shocking hook..."
+    }}
+  ]
+}}
+
+Transcript:
+{transcript_text}
+"""
+        
+        completion = ai.chat.completions.create(
+            model="openai/gpt-4o-mini", # Cost effective and smart enough
+            messages=[
+                {"role": "system", "content": "You are a helpful assistant that outputs JSON."},
+                {"role": "user", "content": prompt}
+            ],
+            response_format={"type": "json_object"}
+        )
+        
+        content = completion.choices[0].message.content
+        data = json.loads(content)
+        segments = data.get("segments", [])
+        
+        # Validate and fix segments
+        valid_segments = []
+        for seg in segments:
+            # Ensure keys exist
+            if "start" not in seg or "end" not in seg:
+                continue
+            
+            # Ensure constraints
+            duration = seg["end"] - seg["start"]
+            if duration < 5: # Too short
+                continue
+                
+            valid_segments.append(seg)
+            
+        # Sort by score
+        valid_segments.sort(key=lambda x: x.get("score", 0), reverse=True)
+        
+        print_success(f"AI identified {len(valid_segments)} potential viral segments")
+        print_clips_summary(valid_segments)
+        
+        return valid_segments
+
+    except Exception as e:
+        print_error(f"AI Analysis failed: {e}")
+        # Fallback to simple segmentation or empty
+        return []
 
 
 # Keywords that often indicate viral/engaging content (Indonesian + English)
